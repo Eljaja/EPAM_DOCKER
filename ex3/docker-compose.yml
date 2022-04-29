@@ -1,0 +1,84 @@
+version: '3.9'
+services:
+
+  frontend:
+    build:
+        context: ./front/
+        dockerfile: Dockerfile_frontend
+    image: epam_frontend:${MAIN_VERSION}
+    container_name: frontend
+    ports: 
+        - "80:80"
+    networks:
+        - front-back
+    depends_on:
+        - backend
+    healthcheck:
+        test: curl --fail http://localhost || kill 1
+        interval: 10s
+        retries: 5
+        start_period: 20s
+        timeout: 10s
+    restart: "unless-stopped"
+
+
+  backend:
+    build:
+        context: ./back/
+        dockerfile: Dockerfile_backend
+    image: epam_backend:${MAIN_VERSION}
+    ports:
+      - "8000:8000"
+    container_name: backend
+    networks:
+        - front-back
+        - back-database
+    depends_on:
+        database:
+            condition: service_healthy
+    healthcheck:
+        test: curl -f http://localhost:8000 || exit 1
+        interval: 60s
+        retries: 5
+        start_period: 20s
+        timeout: 10s
+    restart: "unless-stopped"
+
+
+
+  database:
+    build:
+        context: ./back/
+        dockerfile: Dockerfile_database
+    image: epam_database:${MAIN_VERSION}
+    container_name: database
+    volumes:
+        - ./data:/var/lib/postgresql/data/
+#    ports:
+#        - "5432:5432"
+    networks:
+        - back-database
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U django -d django"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+    restart: "unless-stopped"
+
+
+#  load_data_backend:
+#    image: epam_backend:${MAIN_VERSION}
+#   depends_on:
+#     - backend
+#    restart: "no"
+#    entrypoint: "python manage.py loaddata bbk_data.json"
+
+
+
+networks:
+  front-back:
+      driver: bridge
+  back-database:
+      driver: bridge
+volumes:
+  data:    

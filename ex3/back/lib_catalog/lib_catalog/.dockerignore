@@ -1,0 +1,4 @@
+#ignore docker file
+Docker*
+README.md
+.gitignore
